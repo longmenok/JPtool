@@ -23,10 +23,15 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
     
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y autoconf automake libtool libltdl-dev libffi-dev libssl-dev zlib1g-dev
+    
     - name: Install Buildozer and dependencies
       run: |
-        pip install --upgrade pip
-        pip install buildozer python-for-android cython
+        pip install --upgrade pip setuptools wheel
+        pip install buildozer==1.5.0 python-for-android cython
     
     - name: Build APK
       run: |
