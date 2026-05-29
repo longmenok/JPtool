@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>节拍器</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Orbitron', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f0f23 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        .metronome-container {
+            background: rgba(26, 26, 46, 0.95);
+            border: 2px solid rgba(0, 217, 255, 0.3);
+            border-radius: 20px;
+            padding: 40px;
+            width: 420px;
+            box-shadow: 
+                0 0 60px rgba(0, 217, 255, 0.2),
+                0 0 100px rgba(123, 44, 191, 0.1),
+                inset 0 0 60px rgba(0, 217, 255, 0.05);
+            position: relative;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+
+        .metronome-container:hover {
+            box-shadow: 
+                0 0 80px rgba(0, 217, 255, 0.3),
+                0 0 120px rgba(123, 44, 191, 0.15),
+                inset 0 0 80px rgba(0, 217, 255, 0.08);
+        }
+
+        .title {
+            text-align: center;
+            color: #00d9ff;
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 30px;
+            text-shadow: 0 0 20px rgba(0, 217, 255, 0.5);
+            letter-spacing: 3px;
+        }
+
+        .bpm-display {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .bpm-value {
+            font-size: 72px;
+            font-weight: 900;
+            color: #fff;
+            text-shadow: 
+                0 0 30px rgba(0, 217, 255, 0.8),
+                0 0 60px rgba(0, 217, 255, 0.4);
+            line-height: 1;
+        }
+
+        .bpm-label {
+            font-size: 16px;
+            color: rgba(0, 217, 255, 0.7);
+            margin-top: 5px;
+            letter-spacing: 2px;
+        }
+
+        .beat-visualizer {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 30px;
+            height: 60px;
+            align-items: center;
+        }
+
+        .beat-dot {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: rgba(123, 44, 191, 0.3);
+            border: 2px solid rgba(123, 44, 191, 0.6);
+            transition: all 0.1s ease;
+        }
+
+        .beat-dot.active {
+            background: #7b2cbf;
+            border-color: #00d9ff;
+            box-shadow: 
+                0 0 20px rgba(123, 44, 191, 0.8),
+                0 0 40px rgba(0, 217, 255, 0.6);
+            transform: scale(1.3);
+        }
+
+        .beat-indicator {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            margin: 0 auto 30px;
+            background: radial-gradient(circle, rgba(0, 217, 255, 0.2) 0%, transparent 70%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        .beat-indicator::before {
+            content: '';
+            position: absolute;
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: rgba(0, 217, 255, 0.1);
+            border: 3px solid rgba(0, 217, 255, 0.4);
+            animation: pulse-ring 1s ease-out infinite;
+            opacity: 0;
+        }
+
+        .beat-indicator.playing::before {
+            opacity: 1;
+        }
+
+        .beat-indicator-inner {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #7b2cbf 0%, #00d9ff 100%);
+            box-shadow: 
+                0 0 30px rgba(0, 217, 255, 0.6),
+                0 0 60px rgba(123, 44, 191, 0.4);
+            transition: all 0.1s ease;
+        }
+
+        .beat-indicator.playing .beat-indicator-inner {
+            animation: beat-pulse 0.1s ease-out;
+        }
+
+        @keyframes beat-pulse {
+            0% {
+                transform: scale(1);
+                box-shadow: 
+                    0 0 30px rgba(0, 217, 255, 0.6),
+                    0 0 60px rgba(123, 44, 191, 0.4);
+            }
+            50% {
+                transform: scale(1.15);
+                box-shadow: 
+                    0 0 50px rgba(0, 217, 255, 0.9),
+                    0 0 100px rgba(123, 44, 191, 0.7);
+            }
+            100% {
+                transform: scale(1);
+                box-shadow: 
+                    0 0 30px rgba(0, 217, 255, 0.6),
+                    0 0 60px rgba(123, 44, 191, 0.4);
+            }
+        }
+
+        @keyframes pulse-ring {
+            0% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(1.8);
+                opacity: 0;
+            }
+        }
+
+        .control-section {
+            margin-bottom: 25px;
+        }
+
+        .control-label {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 14px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .bpm-input {
+            width: 100%;
+            height: 8px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            outline: none;
+            -webkit-appearance: none;
+            margin-bottom: 10px;
+        }
+
+        .bpm-input::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #7b2cbf 0%, #00d9ff 100%);
+            cursor: pointer;
+            box-shadow: 
+                0 0 15px rgba(0, 217, 255, 0.6),
+                0 0 30px rgba(123, 44, 191, 0.4);
+            transition: all 0.2s ease;
+        }
+
+        .bpm-input::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+            box-shadow: 
+                0 0 25px rgba(0, 217, 255, 0.8),
+                0 0 50px rgba(123, 44, 191, 0.6);
+        }
+
+        .preset-buttons {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-bottom: 25px;
+        }
+
+        .preset-btn {
+            padding: 12px 8px;
+            border: 2px solid rgba(0, 217, 255, 0.4);
+            background: rgba(0, 217, 255, 0.1);
+            color: #00d9ff;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+
+        .preset-btn:hover {
+            background: rgba(0, 217, 255, 0.2);
+            border-color: #00d9ff;
+            box-shadow: 0 0 20px rgba(0, 217, 255, 0.4);
+            transform: translateY(-2px);
+        }
+
+        .preset-btn:active {
+            transform: translateY(0);
+        }
+
+        .play-btn {
+            width: 100%;
+            padding: 18px;
+            font-size: 20px;
+            font-weight: 700;
+            border: none;
+            border-radius: 15px;
+            cursor: pointer;
+            background: linear-gradient(135deg, #7b2cbf 0%, #00d9ff 100%);
+            color: white;
+            box-shadow: 
+                0 0 30px rgba(0, 217, 255, 0.4),
+                0 0 60px rgba(123, 44, 191, 0.3);
+            transition: all 0.3s ease;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        .play-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 
+                0 0 50px rgba(0, 217, 255, 0.6),
+                0 0 100px rgba(123, 44, 191, 0.5);
+        }
+
+        .play-btn:active {
+            transform: translateY(0);
+        }
+
+        .play-btn.playing {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+            box-shadow: 
+                0 0 30px rgba(255, 107, 107, 0.5),
+                0 0 60px rgba(238, 90, 36, 0.3);
+        }
+
+        .window-controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(0, 217, 255, 0.2);
+        }
+
+        .window-btn {
+            flex: 1;
+            padding: 10px;
+            border: 2px solid rgba(0, 217, 255, 0.3);
+            background: rgba(0, 217, 255, 0.1);
+            color: rgba(255, 255, 255, 0.8);
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+        }
+
+        .window-btn:hover {
+            background: rgba(0, 217, 255, 0.2);
+            border-color: #00d9ff;
+            color: #00d9ff;
+        }
+
+        .window-btn.active {
+            background: rgba(0, 217, 255, 0.3);
+            border-color: #00d9ff;
+            color: #00d9ff;
+        }
+
+        .volume-control {
+            margin-bottom: 25px;
+        }
+
+        .volume-slider {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: rgba(255, 255, 255, 0.1);
+            -webkit-appearance: none;
+        }
+
+        .volume-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #7b2cbf 0%, #00d9ff 100%);
+            cursor: pointer;
+        }
+
+        .floating-mode .metronome-container {
+            width: 320px;
+            padding: 25px;
+            position: fixed;
+            top: 50px;
+            left: 50px;
+            z-index: 99999;
+            cursor: move;
+        }
+
+        .floating-mode .metronome-container:hover {
+            box-shadow: 
+                0 0 100px rgba(0, 217, 255, 0.5),
+                0 0 150px rgba(123, 44, 191, 0.3);
+        }
+
+        .minimize-btn {
+            position: absolute;
+            top: -40px;
+            right: 0;
+            padding: 8px 16px;
+            background: rgba(0, 217, 255, 0.2);
+            border: 1px solid rgba(0, 217, 255, 0.4);
+            border-bottom: none;
+            border-radius: 8px 8px 0 0;
+            color: #00d9ff;
+            cursor: pointer;
+            font-size: 14px;
+            display: none;
+        }
+
+        .floating-mode .minimize-btn {
+            display: block;
+        }
+
+        .minimized .metronome-container {
+            width: 200px;
+            padding: 15px;
+            cursor: default;
+        }
+
+        .minimized .beat-visualizer,
+        .minimized .control-section,
+        .minimized .preset-buttons,
+        .minimized .window-controls,
+        .minimized .volume-control {
+            display: none;
+        }
+
+        .minimized .bpm-display {
+            margin-bottom: 10px;
+        }
+
+        .minimized .bpm-value {
+            font-size: 48px;
+        }
+
+        .minimized .beat-indicator {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 15px;
+        }
+
+        .minimized .beat-indicator-inner {
+            width: 40px;
+            height: 40px;
+        }
+
+        .minimized .play-btn {
+            padding: 12px;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <button class="minimize-btn" onclick="toggleMinimize()">展开</button>
+        <div class="metronome-container">
+            <h1 class="title">🎵 节拍器</h1>
+            
+            <div class="bpm-display">
+                <div class="bpm-value" id="bpmValue">120</div>
+                <div class="bpm-label">BPM</div>
+            </div>
+
+            <div class="beat-indicator" id="beatIndicator">
+                <div class="beat-indicator-inner"></div>
+            </div>
+
+            <div class="beat-visualizer" id="beatVisualizer">
+                <div class="beat-dot"></div>
+                <div class="beat-dot"></div>
+                <div class="beat-dot"></div>
+                <div class="beat-dot"></div>
+            </div>
+
+            <div class="control-section">
+                <div class="control-label">
+                    <span>速度</span>
+                </div>
+                <input type="range" class="bpm-input" id="bpmSlider" min="40" max="240" value="120">
+            </div>
+
+            <div class="volume-control">
+                <div class="control-label">
+                    <span>音量</span>
+                </div>
+                <input type="range" class="volume-slider" id="volumeSlider" min="0" max="100" value="70">
+            </div>
+
+            <div class="preset-buttons">
+                <button class="preset-btn" onclick="setBPM(60)">60</button>
+                <button class="preset-btn" onclick="setBPM(80)">80</button>
+                <button class="preset-btn" onclick="setBPM(100)">100</button>
+                <button class="preset-btn" onclick="setBPM(120)">120</button>
+                <button class="preset-btn" onclick="setBPM(140)">140</button>
+                <button class="preset-btn" onclick="setBPM(160)">160</button>
+                <button class="preset-btn" onclick="setBPM(180)">180</button>
+                <button class="preset-btn" onclick="setBPM(200)">200</button>
+            </div>
+
+            <button class="play-btn" id="playBtn" onclick="togglePlay()">
+                ▶ 开始
+            </button>
+
+            <div class="window-controls">
+                <button class="window-btn" id="pinBtn" onclick="togglePin()">
+                    📌 置顶
+                </button>
+                <button class="window-btn" id="opacityBtn" onclick="toggleOpacity()">
+                    💠 半透明
+                </button>
+                <button class="window-btn" onclick="resetWindow()">
+                    🔄 重置
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let audioContext = null;
+        let isPlaying = false;
+        let intervalId = null;
+        let currentBeat = 0;
+        let isPinned = false;
+        let isSemiTransparent = false;
+        let isMinimized = false;
+        let volume = 0.7;
+        let bpm = 120;
+        let isDragging = false;
+        let dragOffsetX = 0;
+        let dragOffsetY = 0;
+
+        const bpmSlider = document.getElementById('bpmSlider');
+        const bpmValue = document.getElementById('bpmValue');
+        const playBtn = document.getElementById('playBtn');
+        const beatIndicator = document.getElementById('beatIndicator');
+        const beatDots = document.querySelectorAll('.beat-dot');
+        const volumeSlider = document.getElementById('volumeSlider');
+        const pinBtn = document.getElementById('pinBtn');
+        const opacityBtn = document.getElementById('opacityBtn');
+        const metronomeContainer = document.querySelector('.metronome-container');
+
+        bpmSlider.addEventListener('input', (e) => {
+            bpm = parseInt(e.target.value);
+            bpmValue.textContent = bpm;
+            if (isPlaying) {
+                stopMetronome();
+                startMetronome();
+            }
+        });
+
+        volumeSlider.addEventListener('input', (e) => {
+            volume = parseInt(e.target.value) / 100;
+        });
+
+        function initAudio() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        function playClick() {
+            initAudio();
+
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+
+            oscillator.frequency.value = 800;
+            oscillator.type = 'sine';
+
+            gainNode.gain.setValueAtTime(volume, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.1);
+        }
+
+        function updateVisualization() {
+            beatDots.forEach((dot, index) => {
+                dot.classList.remove('active');
+                if (index === currentBeat) {
+                    dot.classList.add('active');
+                }
+            });
+
+            beatIndicator.classList.add('playing');
+            setTimeout(() => {
+                beatIndicator.classList.remove('playing');
+            }, 100);
+        }
+
+        function tick() {
+            playClick();
+            updateVisualization();
+            currentBeat = (currentBeat + 1) % 4;
+        }
+
+        function startMetronome() {
+            initAudio();
+            if (audioContext.state === 'suspended') {
+                audioContext.resume();
+            }
+
+            const interval = 60000 / bpm;
+            tick();
+            intervalId = setInterval(tick, interval);
+        }
+
+        function stopMetronome() {
+            if (intervalId) {
+                clearInterval(intervalId);
+                intervalId = null;
+            }
+        }
+
+        function togglePlay() {
+            isPlaying = !isPlaying;
+            
+            if (isPlaying) {
+                startMetronome();
+                playBtn.textContent = '⏸ 暂停';
+                playBtn.classList.add('playing');
+                beatIndicator.classList.add('playing');
+            } else {
+                stopMetronome();
+                playBtn.textContent = '▶ 开始';
+                playBtn.classList.remove('playing');
+                beatIndicator.classList.remove('playing');
+                beatDots.forEach(dot => dot.classList.remove('active'));
+            }
+        }
+
+        function setBPM(value) {
+            bpm = value;
+            bpmSlider.value = bpm;
+            bpmValue.textContent = bpm;
+            if (isPlaying) {
+                stopMetronome();
+                startMetronome();
+            }
+        }
+
+        function togglePin() {
+            isPinned = !isPinned;
+            document.body.classList.toggle('floating-mode', isPinned);
+            pinBtn.classList.toggle('active', isPinned);
+            pinBtn.textContent = isPinned ? '📌 已置顶' : '📌 置顶';
+            
+            if (isPinned) {
+                enableDragging();
+            } else {
+                disableDragging();
+                resetWindow();
+            }
+        }
+
+        function toggleOpacity() {
+            isSemiTransparent = !isSemiTransparent;
+            if (isSemiTransparent) {
+                metronomeContainer.style.opacity = '0.7';
+            } else {
+                metronomeContainer.style.opacity = '1';
+            }
+            opacityBtn.classList.toggle('active', isSemiTransparent);
+        }
+
+        function toggleMinimize() {
+            isMinimized = !isMinimized;
+            document.body.classList.toggle('minimized', isMinimized);
+            document.querySelector('.minimize-btn').textContent = isMinimized ? '展开' : '收起';
+        }
+
+        function resetWindow() {
+            isPinned = false;
+            isSemiTransparent = false;
+            isMinimized = false;
+            
+            document.body.classList.remove('floating-mode', 'minimized');
+            metronomeContainer.style.opacity = '1';
+            metronomeContainer.style.top = 'auto';
+            metronomeContainer.style.left = 'auto';
+            
+            pinBtn.classList.remove('active');
+            pinBtn.textContent = '📌 置顶';
+            opacityBtn.classList.remove('active');
+            
+            disableDragging();
+        }
+
+        function enableDragging() {
+            const container = metronomeContainer;
+            
+            container.addEventListener('mousedown', startDrag);
+            document.addEventListener('mousemove', drag);
+            document.addEventListener('mouseup', stopDrag);
+        }
+
+        function disableDragging() {
+            const container = metronomeContainer;
+            
+            container.removeEventListener('mousedown', startDrag);
+            document.removeEventListener('mousemove', drag);
+            document.removeEventListener('mouseup', stopDrag);
+        }
+
+        function startDrag(e) {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON') {
+                return;
+            }
+            isDragging = true;
+            dragOffsetX = e.clientX - metronomeContainer.offsetLeft;
+            dragOffsetY = e.clientY - metronomeContainer.offsetTop;
+            metronomeContainer.style.cursor = 'grabbing';
+        }
+
+        function drag(e) {
+            if (!isDragging) return;
+            
+            let newLeft = e.clientX - dragOffsetX;
+            let newTop = e.clientY - dragOffsetY;
+            
+            newLeft = Math.max(0, Math.min(newLeft, window.innerWidth - metronomeContainer.offsetWidth));
+            newTop = Math.max(0, Math.min(newTop, window.innerHeight - metronomeContainer.offsetHeight));
+            
+            metronomeContainer.style.left = newLeft + 'px';
+            metronomeContainer.style.top = newTop + 'px';
+        }
+
+        function stopDrag() {
+            isDragging = false;
+            metronomeContainer.style.cursor = 'move';
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                togglePlay();
+            }
+        });
+    </script>
+</body>
+</html>
